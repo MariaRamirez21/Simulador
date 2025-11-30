@@ -1,58 +1,3 @@
-    Consulta exitosa
-
-El error sigue siendo el mismo: ModuleNotFoundError: Ningún módulo llamado 'app'.
-
-Esto significa que el servidor Gunicorn que usa Render no está encontrando el objeto de la aplicación Dash (app o server) en el archivo que le especificaste.
-
-Incluso si el código Python es correcto, si el comando de inicio de Render es erróneo, fallará.
-
-🔑 Solución Definitiva para Render
-
-Ya que has confirmado que el error persiste incluso después de nombrar la aplicación como server y usar el comando gunicorn simulador:server (lo cual es la forma estándar para un archivo llamado simulador.py), la causa más probable es que Render está utilizando un nombre de módulo predeterminado diferente o tu archivo no se llama simulador.py.
-
-Dado que el código es correcto, la corrección final se centra en la configuración del servidor, asegurando que Gunicorn sepa dónde buscar.
-
-1. Ajuste del Código (Nomenclatura Estándar)
-
-Para maximizar la compatibilidad, usaremos la nomenclatura estándar de Dash/Flask y crearemos un objeto explícito llamado server.
-
-Asegúrate de que las siguientes líneas estén en tu código:
-Python
-
-# --- Inicialización de la Aplicación Dash ---
-app = dash.Dash(__name__) 
-
-# Esto es lo que Gunicorn busca para servir la aplicación
-server = app.server 
-
-(Esta parte ya estaba corregida en el código anterior, por lo que el problema está en la configuración de Render).
-
-2. Configuración Crítica en Render (Comando de Inicio)
-
-Debes verificar que el nombre del archivo en tu repositorio de código coincida exactamente con el comando de inicio en Render.
-Nombre de tu Archivo	Comando de Inicio en Render
-simulador.py	gunicorn simulador:server
-app.py (Recomendado)	gunicorn app:server
-
-Si el archivo se llama simulador.py, usa el primer comando. Si no funciona, te recomiendo encarecidamente renombrar tu archivo a app.py (la convención más común) y usar el segundo comando.
-
-Si el error persiste incluso con el comando correcto, puedes probar la sintaxis alternativa de Gunicorn:
-Bash
-
-gunicorn 'simulador:app.server' 
-
-o (si renombraste el archivo a app.py):
-Bash
-
-gunicorn 'app:app.server' 
-
-💻 Código Completo Final (Listo para Despliegue)
-
-Este es el mismo código de la respuesta anterior, que es el correcto, pero con énfasis en la variable server para el despliegue y con la línea de ejecución local comentada.
-
-Si usas este código, el comando de inicio en Render debe ser gunicorn simulador:server (asumiendo que el archivo se llama simulador.py).
-Python
-
 import dash
 from dash import dcc
 from dash import html
@@ -256,3 +201,4 @@ if __name__ == '__main__':
     # Esta sección se mantiene solo para que Python no se queje de sintaxis
     # NUNCA debe contener app.run() o app.run_server() en un entorno de hosting
     pass 
+
