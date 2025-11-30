@@ -1,1 +1,1 @@
-gunicorn 'simulador:app.server'
+gunicorn simulador:server
