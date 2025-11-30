@@ -6,45 +6,39 @@ import plotly.graph_objects as go
 import numpy as np
 
 # --- Fórmulas/Correlaciones para el Número de Sherwood (Sh) ---
-# NOTA: Las correlaciones exactas dependen de la geometría y el régimen.
-# Aquí usamos una función simple de ejemplo para ilustrar el concepto y la dependencia de Re y Sc.
+# Se usan los operadores de potencia (**) CORRECTAMENTE.
 
 def calcular_sherwood(geometria, Re, Sc, usar_DAB=False):
     """
     Calcula un valor representativo de Sherwood (Sh)
-    usando correlaciones simplificadas basadas en la imagen.
-
-    Las correlaciones reales para transferencia de masa son análogas a las de transferencia de calor
-    (sustituyendo Nu, Pr, Re por Sh, Sc, Re) y son específicas para cada geometría (placa plana, cilindro, etc.).
+    usando correlaciones simplificadas.
     """
     if not usar_DAB:
-        # La casilla DAB es esencial para kc y Sc, por lo que si no se marca,
-        # retornamos un valor nulo o indicamos que se debe marcar.
         return 0.0
 
     # Correlaciones simplificadas (ejemplos):
     if geometria == 'placa':
-        # Analogía con placa plana (turbulento)
-        Sh = 0.037 * (Re*0.8) * (Sc*(1/3))
+        # Analogía con placa plana (turbulento): Sh = 0.037 * Re^0.8 * Sc^(1/3)
+        Sh = 0.037 * (Re**0.8) * (Sc**(1/3))
     elif geometria == 'tubo':
-        # Analogía con flujo en tubo (turbulento, correlación de Sieder-Tate/Dittus-Boelter simplificada)
-        Sh = 0.023 * (Re*0.8) * (Sc*(1/3))
+        # Analogía con flujo en tubo (turbulento): Sh = 0.023 * Re^0.8 * Sc^(1/3)
+        Sh = 0.023 * (Re**0.8) * (Sc**(1/3))
     elif geometria == 'esfera':
-        # Correlación de Frössling/Ranz-Marshall (Sh = 2 + 0.6 * Re^0.5 * Sc^0.33)
-        Sh = 2.0 + 0.6 * (Re*0.5) * (Sc*(1/3))
+        # Correlación de Frössling/Ranz-Marshall: Sh = 2 + 0.6 * Re^0.5 * Sc^0.33
+        Sh = 2.0 + 0.6 * (Re**0.5) * (Sc**(1/3))
     elif geometria == 'gota':
-        # Similar a la esfera, quizás con un término de velocidad interfacial
-        Sh = 2.0 + 0.6 * (Re*0.5) * (Sc*(1/3)) # Usamos la misma que esfera como ejemplo
+        # Similar a la esfera
+        Sh = 2.0 + 0.6 * (Re**0.5) * (Sc**(1/3))
     elif geometria == 'lecho empacado':
-        # Correlación de Chilton-Colburn o similares (Requiere más parámetros, usamos una simplificada)
-        Sh = 1.15 * (Re*0.6) * (Sc*(1/3))
+        # Correlación simplificada: Sh ~ Re^0.6 * Sc^(1/3)
+        Sh = 1.15 * (Re**0.6) * (Sc**(1/3))
     else:
         Sh = 0.0
 
     return Sh
 
 # --- Inicialización de la Aplicación Dash ---
-app = dash.Dash(_name_)
+app = dash.Dash(__name__)
 
 # --- Definición de Componentes de la Interfaz ---
 # Opciones para el menú desplegable de geometría
@@ -167,20 +161,19 @@ def actualizar_resultados(geometria, Re, Sc, checklist_dab, DAB):
     usar_DAB = 'DAB_ON' in checklist_dab
     kc = 0.0 # Valor inicial
 
-    if not usar_DAB or DAB is None or DAB <= 0:
+    # Verificación de que DAB es un número válido y positivo
+    if not usar_DAB or DAB is None or not isinstance(DAB, (int, float)) or DAB <= 0:
         Sh = 0.0
         interpretacion = (
             "⚠ *ADVERTENCIA:* Debe marcar la casilla 'Usar valor DAB' e ingresar un Coeficiente de Difusión (DAB) "
-            "válido y mayor a cero para poder calcular el Número de Sherwood (Sh) y el Coeficiente $k_c$."
+            "válido y mayor a cero para poder calcular el Número de Sherwood (Sh) y el Coeficiente $\\boldsymbol{k_c}$."
         )
     else:
         # 1. Calcular Sherwood (Sh)
         Sh = calcular_sherwood(geometria, Re, Sc, usar_DAB)
-
+        
         # 2. Calcular Coeficiente de Transferencia de Masa (kc)
-        # Definición: Sh = (kc * L) / DAB 
-        # k_c = Sh * (DAB / L_caracteristica)
-        # Asumimos una Longitud Característica (L) de 1 metro para mantener las unidades base.
+        # k_c = Sh * (DAB / L_caracteristica). Asumimos L_caracteristica = 1.0 m.
         L_caracteristica = 1.0 
         kc = Sh * (DAB / L_caracteristica)
 
@@ -188,29 +181,29 @@ def actualizar_resultados(geometria, Re, Sc, checklist_dab, DAB):
         interpretacion_parts = []
         # - Re
         if Re > 5000:
-            interpretacion_parts.append(f"• *Re alto ({Re:.0f})* → Flujo *Turbulento* → Mayor $\\boldsymbol{{k_c}}$ (Transferencia Dominada por *Convección*).")
+            interpretacion_parts.append(f"• *Re alto ({Re:.0f})* → Flujo **Turbulento** → Mayor $\\boldsymbol{{k_c}}$ (Transferencia Dominada por **Convección**).")
         elif Re < 500:
-            interpretacion_parts.append(f"• *Re bajo ({Re:.0f})* → Flujo *Laminar* → Menor $\\boldsymbol{{k_c}}$.")
+            interpretacion_parts.append(f"• *Re bajo ({Re:.0f})* → Flujo **Laminar** → Menor $\\boldsymbol{{k_c}}$.")
         else:
             interpretacion_parts.append(f"• *Re moderado ({Re:.0f})* → Flujo de Transición.")
         
         # - Sc
         if Sc > 1000:
-            interpretacion_parts.append(f"• *Sc alto ({Sc:.0f})* → Difusión Lenta (*Líquidos*) → Menor $\\boldsymbol{{k_c}}$ (Resistencia a la difusión alta).")
+            interpretacion_parts.append(f"• *Sc alto ({Sc:.0f})* → Difusión Lenta (**Líquidos**) → Menor $\\boldsymbol{{k_c}}$ (Resistencia a la difusión alta).")
         elif Sc < 1:
-            interpretacion_parts.append(f"• *Sc bajo ({Sc:.1f})* → Difusión Rápida (*Gases*) → Mayor $\\boldsymbol{{k_c}}$.")
+            interpretacion_parts.append(f"• *Sc bajo ({Sc:.1f})* → Difusión Rápida (**Gases**) → Mayor $\\boldsymbol{{k_c}}$.")
         else:
             interpretacion_parts.append(f"• *Sc moderado ({Sc:.1f})*")
 
         # - Combinación Actual
         if Sh > 1000 and Re > 5000:
-             comb = "*Convección Forzada Dominante*"
+              comb = "**Convección Forzada Dominante**"
         elif Sh < 100 and Sc > 1000:
-             comb = "*Difusión Lenta Dominante*"
+              comb = "**Difusión Lenta Dominante**"
         else:
-             comb = "*Transferencia combinada convección/difusión*"
+              comb = "**Transferencia combinada convección/difusión**"
 
-        interpretacion_parts.append(f"• *Combinación actual:* {comb} para la geometría de *{geometria.capitalize()}*.")
+        interpretacion_parts.append(f"• *Combinación actual:* {comb} para la geometría de **{geometria.capitalize()}**.")
 
         interpretacion = html.Ul([html.Li(html.Span(item)) for item in interpretacion_parts])
 
@@ -237,13 +230,10 @@ def actualizar_grafica(Sh_str, kc_str):
         kc = 1e-10
 
     # Definir rangos logarítmicos fijos y dinámicos para el eje Y (kc)
-    # Rango para Sherwood (Sh)
-    sh_min = 0.0 # log10(1)
-    sh_max = 4.3 # log10(20000)
-
-    # Rango para kc (m/s): de 1e-12 hasta 1e-3, ajustando dinámicamente el máximo si es necesario.
-    kc_min = -12.0 # log10(1e-12)
-    kc_max = -3.0 # log10(1e-3)
+    sh_min = 0.0 
+    sh_max = 4.3 
+    kc_min = -12.0 
+    kc_max = -3.0 
 
     # Asegurar que el punto actual caiga bien dentro de la gráfica
     if Sh > 0:
@@ -251,8 +241,21 @@ def actualizar_grafica(Sh_str, kc_str):
     if kc > 0:
         kc_max = max(kc_max, np.log10(kc) + 0.5)
 
+    # Línea de referencia Sh ~ kc
+    sh_line = np.logspace(sh_min, sh_max, 50)
+    kc_line_ref = (sh_line * (kc/Sh)) if Sh > 0 else (sh_line * 1e-10)
+
     fig = go.Figure(
         data=[
+            # Línea de referencia Sh ~ kc
+            go.Scatter(
+                x=sh_line,
+                y=kc_line_ref,
+                mode='lines',
+                name='Relación Proporcional',
+                line=dict(color='gray', dash='dot')
+            ),
+            # Punto Actual
             go.Scatter(
                 x=[Sh],
                 y=[kc],
@@ -267,16 +270,14 @@ def actualizar_grafica(Sh_str, kc_str):
             # Se usan los logaritmos de los rangos en el parámetro 'range' del eje logarítmico
             xaxis=dict(title='Eje X: Número de Sherwood (Sh)', type='log', range=[sh_min, sh_max]),
             yaxis=dict(title='Eje Y: Coeficiente $k_c$ ($m/s$)', type='log', range=[kc_min, kc_max]),
-            title='Relación entre Sh y $k_c$',
+            title='Relación entre Sh y $k_c$ (Ambos son medidas de Transferencia de Masa)',
             hovermode='closest',
             margin=dict(l=40, r=40, t=40, b=40)
         )
     )
-    # ESTA LÍNEA DEBE DEVOLVER LA FIGURA
     return fig
 
 # --- Ejecución del Servidor ---
-if _name_ == '_main_':
-    # Para ejecutar en un entorno local, el servidor se iniciará en http://127.0.0.1:8050/
-    # Usar host='0.0.0.0' asegura que escuche en todas las interfaces (local e ngrok)
-    app.run(debug=True, host='0.0.0.0')
+if __name__ == '__main__':
+    # CORRECCIÓN FINAL: Cambiar app.run_server(debug=True) por app.run(debug=True)
+    app.run(debug=True)
