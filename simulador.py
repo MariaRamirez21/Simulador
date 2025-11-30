@@ -1,3 +1,61 @@
+    Consulta exitosa
+
+El error sigue siendo el mismo: ModuleNotFoundError: Ningún módulo llamado 'app'.
+
+Esto significa que el servidor Gunicorn que usa Render no está encontrando el objeto de la aplicación Dash (app o server) en el archivo que le especificaste.
+
+Incluso si el código Python es correcto, si el comando de inicio de Render es erróneo, fallará.
+
+🔑 Solución Definitiva para Render
+
+Ya que has confirmado que el error persiste incluso después de nombrar la aplicación como server y usar el comando gunicorn simulador:server (lo cual es la forma estándar para un archivo llamado simulador.py), la causa más probable es que Render está utilizando un nombre de módulo predeterminado diferente o tu archivo no se llama simulador.py.
+
+Dado que el código es correcto, la corrección final se centra en la configuración del servidor, asegurando que Gunicorn sepa dónde buscar.
+
+1. Ajuste del Código (Nomenclatura Estándar)
+
+Para maximizar la compatibilidad, usaremos la nomenclatura estándar de Dash/Flask y crearemos un objeto explícito llamado server.
+
+Asegúrate de que las siguientes líneas estén en tu código:
+Python
+
+# --- Inicialización de la Aplicación Dash ---
+app = dash.Dash(__name__) 
+
+# Esto es lo que Gunicorn busca para servir la aplicación
+server = app.server 
+
+(Esta parte ya estaba corregida en el código anterior, por lo que el problema está en la configuración de Render).
+
+2. Configuración Crítica en Render (Comando de Inicio)
+
+Debes verificar que el nombre del archivo en tu repositorio de código coincida exactamente con el comando de inicio en Render.
+Nombre de tu Archivo	Comando de Inicio en Render
+simulador.py	gunicorn simulador:server
+app.py (Recomendado)	gunicorn app:server
+
+Si el archivo se llama simulador.py, usa el primer comando. Si no funciona, te recomiendo encarecidamente renombrar tu archivo a app.py (la convención más común) y usar el segundo comando.
+
+Si el error persiste incluso con el comando correcto, puedes probar la sintaxis alternativa de Gunicorn:
+Bash
+
+gunicorn 'simulador:app.server' 
+
+o (si renombraste el archivo a app.py):
+Bash
+
+gunicorn 'app:app.server' 
+
+💻 Código Completo Final (Listo para Despliegue)
+
+Este es el mismo código de la respuesta anterior, que es el correcto, pero con énfasis en la variable server para el despliegue y con la línea de ejecución local comentada.
+
+Si usas este código, el comando de inicio en Render debe ser gunicorn simulador:server (asumiendo que el archivo se llama simulador.py).
+Python
+
+import dash
+from dash import dcc
+from dash import html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 import numpy as np
@@ -5,14 +63,10 @@ import numpy as np
 # --- Fórmulas/Correlaciones para el Número de Sherwood (Sh) ---
 
 def calcular_sherwood(geometria, Re, Sc, usar_DAB=False):
-    """
-    Calcula un valor representativo de Sherwood (Sh)
-    usando correlaciones simplificadas.
-    """
+    # ... (cuerpo de la función sin cambios, ya está correcto) ...
     if not usar_DAB:
         return 0.0
 
-    # Correlaciones simplificadas (ejemplos):
     if geometria == 'placa':
         Sh = 0.037 * (Re**0.8) * (Sc**(1/3))
     elif geometria == 'tubo':
@@ -25,16 +79,13 @@ def calcular_sherwood(geometria, Re, Sc, usar_DAB=False):
         Sh = 1.15 * (Re**0.6) * (Sc**(1/3))
     else:
         Sh = 0.0
-
     return Sh
 
 # --- Inicialización de la Aplicación Dash ---
-# NOTA: Usamos 'app' como nombre estándar de la aplicación
 app = dash.Dash(__name__) 
 
-# --- IMPORTANTE PARA DESPLIEGUE ---
-# Se crea la variable 'server' para que Gunicorn o cualquier servidor WSGI
-# (como Render) pueda encontrar el objeto de la aplicación de Flask/Dash.
+# ESTA LÍNEA ES VITAL PARA GUNICORN/RENDER
+# Gunicorn busca el objeto 'server' o 'app' para arrancar.
 server = app.server
 
 # --- Definición de Componentes de la Interfaz ---
@@ -50,94 +101,44 @@ opciones_geometria = [
 app.layout = html.Div(style={'padding': '20px'}, children=[
     html.H1("⚙ Simulador Interactivo de Transferencia de Masa"),
     html.Hr(),
+    # ... (resto del layout sin cambios) ...
 
     html.Div(style={'display': 'flex', 'flex-direction': 'row', 'gap': '30px'}, children=[
-
-        # Columna de controles
         html.Div(style={'width': '300px'}, children=[
             html.H3("Controles"),
-
-            # 1. Menú Geometría
             html.Label("Geometría:"),
-            dcc.Dropdown(
-                id='dropdown-geometria',
-                options=opciones_geometria,
-                value='esfera',
-                clearable=False
-            ),
+            dcc.Dropdown(id='dropdown-geometria', options=opciones_geometria, value='esfera', clearable=False),
             html.Br(),
-
-            # 2. Slider Reynolds (Re)
             html.Label("Número de Reynolds (Re) [100 - 10,000]:"),
-            dcc.Slider(
-                id='slider-re',
-                min=100,
-                max=10000,
-                step=100,
-                value=1000,
-                marks={i: str(i) for i in [100, 1000, 5000, 10000]}
-            ),
+            dcc.Slider(id='slider-re', min=100, max=10000, step=100, value=1000, marks={i: str(i) for i in [100, 1000, 5000, 10000]}),
             html.Br(),
-
-            # 3. Slider Schmidt (Sc)
             html.Label("Número de Schmidt (Sc) [0.6 - 3,000]:"),
-            dcc.Slider(
-                id='slider-sc',
-                min=0.6,
-                max=3000,
-                step=10,
-                value=500,
-                marks={i: str(i) for i in [0.6, 500, 1500, 3000]}
-            ),
+            dcc.Slider(id='slider-sc', min=0.6, max=3000, step=10, value=500, marks={i: str(i) for i in [0.6, 500, 1500, 3000]}),
             html.Br(),
-
-            # 4. Casilla DAB (Coeficiente de difusividad)
             html.Div([
-                dcc.Checklist(
-                    id='checklist-dab',
-                    options=[{'label': ' Usar valor DAB (Esencial para Sh y kc)', 'value': 'DAB_ON'}],
-                    value=['DAB_ON']
-                ),
+                dcc.Checklist(id='checklist-dab', options=[{'label': ' Usar valor DAB (Esencial para Sh y kc)', 'value': 'DAB_ON'}], value=['DAB_ON']),
                 html.Small("DAB = Coeficiente de difusividad de A en B ($m^2/s$).", style={'color': 'gray'})
             ], style={'margin-top': '10px'}),
             html.Br(),
-
-            # 5. Parámetro adicional: Coeficiente de Difusión (DAB) para calcular kc
             html.Label("Coeficiente de Difusión (DAB) en $m^2/s$ (Ej: $1e-9$ para líquidos):"),
-            dcc.Input(
-                id='input-dab-valor',
-                type='number',
-                value=1e-9,
-                style={'width': '100%'}
-            ),
+            dcc.Input(id='input-dab-valor', type='number', value=1e-9, style={'width': '100%'}),
         ]),
 
-        # Columna de Resultados y Gráfica
         html.Div(style={'flex-grow': '1'}, children=[
             html.H3("Valores Calculados"),
-            html.P([
-                "Número de Sherwood (Sh): ",
-                html.Span(id='output-sh', style={'font-weight': 'bold', 'color': '#1f77b4'})
-            ]),
-            html.P([
-                "Coeficiente de Transferencia de Masa ($k_c$) en $m/s$: ",
-                html.Span(id='output-kc', style={'font-weight': 'bold', 'color': '#ff7f0e'})
-            ]),
+            html.P(["Número de Sherwood (Sh): ", html.Span(id='output-sh', style={'font-weight': 'bold', 'color': '#1f77b4'})]),
+            html.P(["Coeficiente de Transferencia de Masa ($k_c$) en $m/s$: ", html.Span(id='output-kc', style={'font-weight': 'bold', 'color': '#ff7f0e'})]),
             html.Hr(),
-
             html.H3("Gráfica Bidimensional (Sh vs $k_c$)"),
             dcc.Graph(id='graph-sh-kc', style={'height': '400px'}),
         ]),
     ]),
-
     html.Hr(),
-
-    # --- Interpretación Automática Breve ---
     html.H3("Análisis y Correlación"),
     html.Blockquote(id='output-interpretacion', style={'border-left': '5px solid #ccc', 'padding': '10px', 'background-color': '#f9f9f9'}),
 ])
 
-# --- Callbacks para la Lógica del Simulador (Sin Cambios) ---
+# --- Callbacks (Sin Cambios) ---
 
 @app.callback(
     [Output('output-sh', 'children'),
@@ -163,12 +164,11 @@ def actualizar_resultados(geometria, Re, Sc, checklist_dab, DAB):
         Sh = calcular_sherwood(geometria, Re, Sc, usar_DAB)
         L_caracteristica = 1.0 
         kc = Sh * (DAB / L_caracteristica)
-
-        # 3. Generar Interpretación
+        
+        # 3. Generar Interpretación (Lógica sin cambios)
         interpretacion_parts = []
         if Re > 5000:
             interpretacion_parts.append(f"• *Re alto ({Re:.0f})* → Flujo **Turbulento** → Mayor $\\boldsymbol{{k_c}}$ (Transferencia Dominada por **Convección**).")
-        # [Resto de la lógica de interpretación, sin cambios]...
         elif Re < 500:
             interpretacion_parts.append(f"• *Re bajo ({Re:.0f})* → Flujo **Laminar** → Menor $\\boldsymbol{{k_c}}$.")
         else:
@@ -251,9 +251,8 @@ def actualizar_grafica(Sh_str, kc_str):
     )
     return fig
 
-# --- Ejecución del Servidor (SOLO PARA PRUEBAS LOCALES) ---
+# --- Ejecución del Servidor (IMPORTANTE: Se elimina la ejecución local) ---
 if __name__ == '__main__':
-    # Para pruebas locales, descomenta la siguiente línea
-    # app.run(debug=True)
-    pass # Dejamos 'pass' para que Render lo ignore
-            
+    # Esta sección se mantiene solo para que Python no se queje de sintaxis
+    # NUNCA debe contener app.run() o app.run_server() en un entorno de hosting
+    pass 
