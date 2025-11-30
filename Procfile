@@ -1,1 +1,1 @@
-web: gunicorn simulador:server
+gunicorn simulador:server
