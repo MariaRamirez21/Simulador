@@ -6,43 +6,48 @@ import plotly.graph_objects as go
 import numpy as np
 
 # --- Fórmulas/Correlaciones para el Número de Sherwood (Sh) ---
+# NOTA: Las correlaciones exactas dependen de la geometría y el régimen.
+# Aquí usamos una función simple de ejemplo para ilustrar el concepto y la dependencia de Re y Sc.
+
 def calcular_sherwood(geometria, Re, Sc, usar_DAB=False):
     """
     Calcula un valor representativo de Sherwood (Sh)
-    usando correlaciones simplificadas.
+    usando correlaciones simplificadas basadas en la imagen.
+
+    Las correlaciones reales para transferencia de masa son análogas a las de transferencia de calor
+    (sustituyendo Nu, Pr, Re por Sh, Sc, Re) y son específicas para cada geometría (placa plana, cilindro, etc.).
     """
     if not usar_DAB:
-        # La casilla DAB es esencial para kc y Sc
+        # La casilla DAB es esencial para kc y Sc, por lo que si no se marca,
+        # retornamos un valor nulo o indicamos que se debe marcar.
         return 0.0
 
     # Correlaciones simplificadas (ejemplos):
     if geometria == 'placa':
         # Analogía con placa plana (turbulento)
-        Sh = 0.037 * (Re**0.8) * (Sc**(1/3))
+        Sh = 0.037 * (Re*0.8) * (Sc*(1/3))
     elif geometria == 'tubo':
-        # Analogía con flujo en tubo (turbulento, correlación de Dittus-Boelter simplificada)
-        Sh = 0.023 * (Re**0.8) * (Sc**(1/3))
+        # Analogía con flujo en tubo (turbulento, correlación de Sieder-Tate/Dittus-Boelter simplificada)
+        Sh = 0.023 * (Re*0.8) * (Sc*(1/3))
     elif geometria == 'esfera':
         # Correlación de Frössling/Ranz-Marshall (Sh = 2 + 0.6 * Re^0.5 * Sc^0.33)
-        Sh = 2.0 + 0.6 * (Re**0.5) * (Sc**(1/3))
+        Sh = 2.0 + 0.6 * (Re*0.5) * (Sc*(1/3))
     elif geometria == 'gota':
-        # Usamos la misma que esfera como ejemplo
-        Sh = 2.0 + 0.6 * (Re**0.5) * (Sc**(1/3))
+        # Similar a la esfera, quizás con un término de velocidad interfacial
+        Sh = 2.0 + 0.6 * (Re*0.5) * (Sc*(1/3)) # Usamos la misma que esfera como ejemplo
     elif geometria == 'lecho empacado':
-        # Correlación simplificada
-        Sh = 1.15 * (Re**0.6) * (Sc**(1/3))
+        # Correlación de Chilton-Colburn o similares (Requiere más parámetros, usamos una simplificada)
+        Sh = 1.15 * (Re*0.6) * (Sc*(1/3))
     else:
         Sh = 0.0
 
     return Sh
 
 # --- Inicialización de la Aplicación Dash ---
-app = dash.Dash(__name__)
-
-# 🔑 LÍNEA CLAVE AÑADIDA PARA DESPLIEGUE 🔑
-server = app.server
+app = dash.Dash(_name_)
 
 # --- Definición de Componentes de la Interfaz ---
+# Opciones para el menú desplegable de geometría
 opciones_geometria = [
     {'label': 'Placa Plana', 'value': 'placa'},
     {'label': 'Tubo', 'value': 'tubo'},
@@ -162,9 +167,6 @@ def actualizar_resultados(geometria, Re, Sc, checklist_dab, DAB):
     usar_DAB = 'DAB_ON' in checklist_dab
     kc = 0.0 # Valor inicial
 
-    # Se ajusta la longitud característica (L) a 1 metro para mantener la base de unidades.
-    L_caracteristica = 1.0
-
     if not usar_DAB or DAB is None or DAB <= 0:
         Sh = 0.0
         interpretacion = (
@@ -176,33 +178,39 @@ def actualizar_resultados(geometria, Re, Sc, checklist_dab, DAB):
         Sh = calcular_sherwood(geometria, Re, Sc, usar_DAB)
 
         # 2. Calcular Coeficiente de Transferencia de Masa (kc)
+        # Definición: Sh = (kc * L) / DAB 
         # k_c = Sh * (DAB / L_caracteristica)
+        # Asumimos una Longitud Característica (L) de 1 metro para mantener las unidades base.
+        L_caracteristica = 1.0 
         kc = Sh * (DAB / L_caracteristica)
 
         # 3. Generar Interpretación
         interpretacion_parts = []
+        # - Re
         if Re > 5000:
-            interpretacion_parts.append(f"• **Re alto ({Re:.0f})** → Flujo **Turbulento** → Mayor $k_c$ (Transferencia Dominada por Convección).")
+            interpretacion_parts.append(f"• *Re alto ({Re:.0f})* → Flujo *Turbulento* → Mayor $\\boldsymbol{{k_c}}$ (Transferencia Dominada por *Convección*).")
         elif Re < 500:
-            interpretacion_parts.append(f"• **Re bajo ({Re:.0f})** → Flujo **Laminar** → Menor $k_c$.")
+            interpretacion_parts.append(f"• *Re bajo ({Re:.0f})* → Flujo *Laminar* → Menor $\\boldsymbol{{k_c}}$.")
         else:
-            interpretacion_parts.append(f"• **Re moderado ({Re:.0f})** → Flujo de Transición.")
-
-        if Sc > 1000:
-            interpretacion_parts.append(f"• **Sc alto ({Sc:.0f})** → Difusión Lenta (**Líquidos**) → Menor $k_c$ (Resistencia a la difusión alta).")
-        elif Sc < 1:
-            interpretacion_parts.append(f"• **Sc bajo ({Sc:.1f})** → Difusión Rápida (**Gases**) → Mayor $k_c$.")
-        else:
-            interpretacion_parts.append(f"• **Sc moderado ({Sc:.1f})**")
+            interpretacion_parts.append(f"• *Re moderado ({Re:.0f})* → Flujo de Transición.")
         
-        if Sh > 1000 and Re > 5000:
-              comb = "**Convección Forzada Dominante**"
-        elif Sh < 100 and Sc > 1000:
-              comb = "**Difusión Lenta Dominante**"
+        # - Sc
+        if Sc > 1000:
+            interpretacion_parts.append(f"• *Sc alto ({Sc:.0f})* → Difusión Lenta (*Líquidos*) → Menor $\\boldsymbol{{k_c}}$ (Resistencia a la difusión alta).")
+        elif Sc < 1:
+            interpretacion_parts.append(f"• *Sc bajo ({Sc:.1f})* → Difusión Rápida (*Gases*) → Mayor $\\boldsymbol{{k_c}}$.")
         else:
-              comb = "**Transferencia combinada convección/difusión**"
+            interpretacion_parts.append(f"• *Sc moderado ({Sc:.1f})*")
 
-        interpretacion_parts.append(f"• **Combinación actual:** {comb} para la geometría de *{geometria.capitalize()}*.")
+        # - Combinación Actual
+        if Sh > 1000 and Re > 5000:
+             comb = "*Convección Forzada Dominante*"
+        elif Sh < 100 and Sc > 1000:
+             comb = "*Difusión Lenta Dominante*"
+        else:
+             comb = "*Transferencia combinada convección/difusión*"
+
+        interpretacion_parts.append(f"• *Combinación actual:* {comb} para la geometría de *{geometria.capitalize()}*.")
 
         interpretacion = html.Ul([html.Li(html.Span(item)) for item in interpretacion_parts])
 
@@ -220,7 +228,7 @@ def actualizar_resultados(geometria, Re, Sc, checklist_dab, DAB):
 )
 def actualizar_grafica(Sh_str, kc_str):
     try:
-        # Convertir las cadenas de texto a flotante.
+        # Convertir las cadenas de texto (ej. "3.02e-03") a flotante.
         Sh = float(Sh_str)
         kc = float(kc_str)
     except ValueError:
@@ -228,13 +236,20 @@ def actualizar_grafica(Sh_str, kc_str):
         Sh = 1.0
         kc = 1e-10
 
-    # Definir rangos logarítmicos
-    sh_min = np.log10(1) if Sh < 1 else np.log10(Sh * 0.1) 
-    sh_max = np.log10(20000) if Sh < 20000 else np.log10(Sh * 10)
+    # Definir rangos logarítmicos fijos y dinámicos para el eje Y (kc)
+    # Rango para Sherwood (Sh)
+    sh_min = 0.0 # log10(1)
+    sh_max = 4.3 # log10(20000)
 
     # Rango para kc (m/s): de 1e-12 hasta 1e-3, ajustando dinámicamente el máximo si es necesario.
-    kc_min = np.log10(1e-12) if kc > 1e-12 else np.log10(kc * 0.1)
-    kc_max = np.log10(1e-3) if kc < 1e-3 else np.log10(kc * 10)
+    kc_min = -12.0 # log10(1e-12)
+    kc_max = -3.0 # log10(1e-3)
+
+    # Asegurar que el punto actual caiga bien dentro de la gráfica
+    if Sh > 0:
+        sh_max = max(sh_max, np.log10(Sh) + 0.5)
+    if kc > 0:
+        kc_max = max(kc_max, np.log10(kc) + 0.5)
 
     fig = go.Figure(
         data=[
@@ -249,15 +264,19 @@ def actualizar_grafica(Sh_str, kc_str):
             )
         ],
         layout=go.Layout(
+            # Se usan los logaritmos de los rangos en el parámetro 'range' del eje logarítmico
             xaxis=dict(title='Eje X: Número de Sherwood (Sh)', type='log', range=[sh_min, sh_max]),
             yaxis=dict(title='Eje Y: Coeficiente $k_c$ ($m/s$)', type='log', range=[kc_min, kc_max]),
-            title='Relación entre Sh y $k_c$ (Escalas Logarítmicas)',
+            title='Relación entre Sh y $k_c$',
             hovermode='closest',
             margin=dict(l=40, r=40, t=40, b=40)
         )
     )
+    # ESTA LÍNEA DEBE DEVOLVER LA FIGURA
     return fig
 
-# ❌ BLOQUE DE EJECUCIÓN LOCAL COMENTADO O ELIMINADO ❌
-# if __name__ == '__main__':
-#     app.run(debug=True, host='0.0.0.0')
+# --- Ejecución del Servidor ---
+if _name_ == '_main_':
+    # Para ejecutar en un entorno local, el servidor se iniciará en http://127.0.0.1:8050/
+    # Usar host='0.0.0.0' asegura que escuche en todas las interfaces (local e ngrok)
+    app.run(debug=True, host='0.0.0.0')
