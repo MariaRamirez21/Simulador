@@ -27,11 +27,11 @@ def calcular_sherwood(geometria, Re, Sc, usar_DAB=False):
     return Sh
 
 # --- Inicialización de la Aplicación Dash ---
-app = dash.Dash(__name__) 
+simulador = dash.Dash(__name__) 
 
 # ESTA LÍNEA ES VITAL PARA GUNICORN/RENDER
 # Gunicorn busca el objeto 'server' o 'app' para arrancar.
-server = app.server
+server = simulador.server
 
 # --- Definición de Componentes de la Interfaz ---
 opciones_geometria = [
@@ -43,7 +43,7 @@ opciones_geometria = [
 ]
 
 # Diseño de la aplicación
-app.layout = html.Div(style={'padding': '20px'}, children=[
+simulador.layout = html.Div(style={'padding': '20px'}, children=[
     html.H1("⚙ Simulador Interactivo de Transferencia de Masa"),
     html.Hr(),
     # ... (resto del layout sin cambios) ...
@@ -85,7 +85,7 @@ app.layout = html.Div(style={'padding': '20px'}, children=[
 
 # --- Callbacks (Sin Cambios) ---
 
-@app.callback(
+@simulador.callback(
     [Output('output-sh', 'children'),
      Output('output-kc', 'children'),
      Output('output-interpretacion', 'children')],
@@ -141,7 +141,7 @@ def actualizar_resultados(geometria, Re, Sc, checklist_dab, DAB):
     kc_str = f"{kc:.2e}"
     return sh_str, kc_str, interpretacion
 
-@app.callback(
+@simulador.callback(
     Output('graph-sh-kc', 'figure'),
     [Input('output-sh', 'children'),
      Input('output-kc', 'children')]
@@ -201,4 +201,5 @@ if __name__ == '__main__':
     # Esta sección se mantiene solo para que Python no se queje de sintaxis
     # NUNCA debe contener app.run() o app.run_server() en un entorno de hosting
     pass 
+
 
