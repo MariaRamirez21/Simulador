@@ -62,19 +62,19 @@ simulador.layout = html.Div(style={'padding': '20px'}, children=[
             html.Br(),
             html.Div([
                 dcc.Checklist(id='checklist-dab', options=[{'label': ' Usar valor DAB (Esencial para Sh y kc)', 'value': 'DAB_ON'}], value=['DAB_ON']),
-                html.Small("DAB = Coeficiente de difusividad de A en B ($m^2/s$).", style={'color': 'gray'})
+                html.Small("DAB = Coeficiente de difusividad de A en B (m^2/s).", style={'color': 'gray'})
             ], style={'margin-top': '10px'}),
             html.Br(),
-            html.Label("Coeficiente de Difusión (DAB) en $m^2/s$ (Ej: $1e-9$ para líquidos):"),
+            html.Label("Coeficiente de Difusión (DAB) en m^2/s (Ej: 1e-9 para líquidos):"),
             dcc.Input(id='input-dab-valor', type='number', value=1e-9, style={'width': '100%'}),
         ]),
 
         html.Div(style={'flex-grow': '1'}, children=[
             html.H3("Valores Calculados"),
             html.P(["Número de Sherwood (Sh): ", html.Span(id='output-sh', style={'font-weight': 'bold', 'color': '#1f77b4'})]),
-            html.P(["Coeficiente de Transferencia de Masa ($k_c$) en $m/s$: ", html.Span(id='output-kc', style={'font-weight': 'bold', 'color': '#ff7f0e'})]),
+            html.P(["Coeficiente de Transferencia de Masa (k_c) en m/s: ", html.Span(id='output-kc', style={'font-weight': 'bold', 'color': '#ff7f0e'})]),
             html.Hr(),
-            html.H3("Gráfica Bidimensional (Sh vs $k_c$)"),
+            html.H3("Gráfica Bidimensional (Sh vs k_c)"),
             dcc.Graph(id='graph-sh-kc', style={'height': '400px'}),
         ]),
     ]),
@@ -103,7 +103,7 @@ def actualizar_resultados(geometria, Re, Sc, checklist_dab, DAB):
         Sh = 0.0
         interpretacion = (
             "⚠ *ADVERTENCIA:* Debe marcar la casilla 'Usar valor DAB' e ingresar un Coeficiente de Difusión (DAB) "
-            "válido y mayor a cero para poder calcular el Número de Sherwood (Sh) y el Coeficiente $\\boldsymbol{k_c}$."
+            "válido y mayor a cero para poder calcular el Número de Sherwood (Sh) y el Coeficiente k_c."
         )
     else:
         Sh = calcular_sherwood(geometria, Re, Sc, usar_DAB)
@@ -113,27 +113,27 @@ def actualizar_resultados(geometria, Re, Sc, checklist_dab, DAB):
         # 3. Generar Interpretación (Lógica sin cambios)
         interpretacion_parts = []
         if Re > 5000:
-            interpretacion_parts.append(f"• *Re alto ({Re:.0f})* → Flujo **Turbulento** → Mayor $\\boldsymbol{{k_c}}$ (Transferencia Dominada por **Convección**).")
+            interpretacion_parts.append(f"• Re alto ({Re:.0f}) → Flujo Turbulento → Mayor k_c (Transferencia Dominada por Convección).")
         elif Re < 500:
-            interpretacion_parts.append(f"• *Re bajo ({Re:.0f})* → Flujo **Laminar** → Menor $\\boldsymbol{{k_c}}$.")
+            interpretacion_parts.append(f"• Re bajo ({Re:.0f}) → Flujo Laminar → Menor k_c.")
         else:
-            interpretacion_parts.append(f"• *Re moderado ({Re:.0f})* → Flujo de Transición.")
+            interpretacion_parts.append(f"• Re moderado ({Re:.0f}) → Flujo de Transición.")
         
         if Sc > 1000:
-            interpretacion_parts.append(f"• *Sc alto ({Sc:.0f})* → Difusión Lenta (**Líquidos**) → Menor $\\boldsymbol{{k_c}}$ (Resistencia a la difusión alta).")
+            interpretacion_parts.append(f"• Sc alto ({Sc:.0f}) → Difusión Lenta (Líquidos) → Menor k_c (Resistencia a la difusión alta).")
         elif Sc < 1:
-            interpretacion_parts.append(f"• *Sc bajo ({Sc:.1f})* → Difusión Rápida (**Gases**) → Mayor $\\boldsymbol{{k_c}}$.")
+            interpretacion_parts.append(f"• Sc bajo ({Sc:.1f}) → Difusión Rápida (Gases) → Mayor k_c.")
         else:
-            interpretacion_parts.append(f"• *Sc moderado ({Sc:.1f})*")
+            interpretacion_parts.append(f"• Sc moderado ({Sc:.1f})")
 
         if Sh > 1000 and Re > 5000:
-              comb = "**Convección Forzada Dominante**"
+              comb = "Convección Forzada Dominante"
         elif Sh < 100 and Sc > 1000:
-              comb = "**Difusión Lenta Dominante**"
+              comb = "Difusión Lenta Dominante"
         else:
-              comb = "**Transferencia combinada convección/difusión**"
+              comb = "Transferencia combinada convección/difusión"
 
-        interpretacion_parts.append(f"• *Combinación actual:* {comb} para la geometría de **{geometria.capitalize()}**.")
+        interpretacion_parts.append(f"• Combinación actual: {comb} para la geometría de **{geometria.capitalize()}**.")
 
         interpretacion = html.Ul([html.Li(html.Span(item)) for item in interpretacion_parts])
 
@@ -188,8 +188,8 @@ def actualizar_grafica(Sh_str, kc_str):
         ],
         layout=go.Layout(
             xaxis=dict(title='Eje X: Número de Sherwood (Sh)', type='log', range=[sh_min, sh_max]),
-            yaxis=dict(title='Eje Y: Coeficiente $k_c$ ($m/s$)', type='log', range=[kc_min, kc_max]),
-            title='Relación entre Sh y $k_c$ (Ambos son medidas de Transferencia de Masa)',
+            yaxis=dict(title='Eje Y: Coeficiente k_c (m/s)', type='log', range=[kc_min, kc_max]),
+            title='Relación entre Sh y k_c (Ambos son medidas de Transferencia de Masa)',
             hovermode='closest',
             margin=dict(l=40, r=40, t=40, b=40)
         )
@@ -201,5 +201,6 @@ if __name__ == '__main__':
     # Esta sección se mantiene solo para que Python no se queje de sintaxis
     # NUNCA debe contener app.run() o app.run_server() en un entorno de hosting
     pass 
+
 
 
